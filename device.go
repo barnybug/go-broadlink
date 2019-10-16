@@ -23,6 +23,10 @@ type Device struct {
 	authenticated bool
 }
 
+func (dev *Device) Mac() []byte {
+	return []byte{dev.mac[5], dev.mac[4], dev.mac[3], dev.mac[2], dev.mac[1], dev.mac[0]}
+}
+
 func (dev *Device) Read(data []byte) {
 	dev.device = binary.LittleEndian.Uint16(data[0x34:0x36])
 	dev.mac = data[0x3a:0x40]
