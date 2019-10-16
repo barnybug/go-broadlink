@@ -113,8 +113,7 @@ func (dev *Device) SetState(state *BGState) (*BGState, error) {
 func (dev *Device) encode(req Request) []byte {
 	dev.count++
 	// prepare request
-	payloadBuf := new(bytes.Buffer)
-	req.Write(payloadBuf)
+	payloadBuf := bytes.NewBuffer(req.Payload())
 	padMod(payloadBuf, 16)
 	plaintext := payloadBuf.Bytes()
 	// construct packet

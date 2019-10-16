@@ -115,7 +115,7 @@ func NewHello(localAddr net.UDPAddr) *Hello {
 type Request interface {
 	Name() string
 	Command() uint16
-	Write(w *bytes.Buffer)
+	Payload() []byte
 }
 
 type AuthRequest struct {
@@ -129,7 +129,8 @@ func (self *AuthRequest) Command() uint16 {
 	return 0x0065
 }
 
-func (self *AuthRequest) Write(buf *bytes.Buffer) {
+func (self *AuthRequest) Payload() []byte {
+	buf := new(bytes.Buffer)
 	pad(buf, 0, 4)
 	pad(buf, 0x31, 15)
 	pad(buf, 0, 11)
@@ -139,6 +140,7 @@ func (self *AuthRequest) Write(buf *bytes.Buffer) {
 	pad(buf, 0, 2)
 	buf.WriteString("Test  1")
 	pad(buf, 0, 25)
+	return buf.Bytes()
 }
 
 type Response interface {
@@ -179,7 +181,8 @@ func (command *CommandRequest) Command() uint16 {
 	return 0x006a
 }
 
-func (command *CommandRequest) Write(buf *bytes.Buffer) {
+func (command *CommandRequest) Payload() []byte {
+	buf := new(bytes.Buffer)
 	// packet format is:
 	// 0x00-0x01 length
 	// 0x02-0x05 header
@@ -204,9 +207,10 @@ func (command *CommandRequest) Write(buf *bytes.Buffer) {
 	buf.Write(js)
 
 	// insert checksum
-	b := buf.Bytes()
-	checksum := commandChecksum(b[0x08:])
-	binary.LittleEndian.PutUint16(b[0x06:0x08], checksum)
+	bytes := buf.Bytes()
+	checksum := commandChecksum(bytes[0x08:])
+	binary.LittleEndian.PutUint16(bytes[0x06:0x08], checksum)
+	return bytes
 }
 
 type BGState struct {
@@ -224,6 +228,7 @@ var zero = uint8(0)
 var StateAllOn = &BGState{Pwr: &one}
 var StateAllOff = &BGState{Pwr: &zero}
 var StatePwr1On = &BGState{Pwr1: &one}
+var StatePwr2On = &BGState{Pwr2: &one}
 var StatePwr1Off = &BGState{Pwr1: &zero}
 var StatePwr2Off = &BGState{Pwr2: &zero}
 
