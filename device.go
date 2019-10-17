@@ -68,6 +68,7 @@ func (dev *Device) send(req Request, resp Response) error {
 		if err := resp.Read(dev.state, recv); err != nil {
 			return err
 		}
+		break
 	}
 	return nil
 }
