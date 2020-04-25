@@ -11,7 +11,10 @@ func main() {
 	log.Println("Discovering...")
 	man := broadlink.NewManager(false)
 	go func() {
-		man.Discover(5 * time.Second)
+		err := man.Discover(30 * time.Second)
+		if err != nil {
+			log.Fatalln(err)
+		}
 		close(man.Discovered)
 	}()
 	for device := range man.Discovered {
@@ -20,6 +23,8 @@ func main() {
 		if err != nil {
 			log.Println(err)
 			continue
+		} else {
+			log.Printf("Authenticated: %s", device)
 		}
 
 		log.Println(device.SetState(broadlink.StateAllOff))

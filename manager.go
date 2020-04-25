@@ -2,6 +2,7 @@ package broadlink
 
 import (
 	"encoding/hex"
+	"errors"
 	"log"
 	"net"
 	"time"
@@ -24,26 +25,59 @@ func isTimeout(err error) bool {
 	return false
 }
 
+func getLocalIP() (net.IP, error) {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return net.IPv4zero, errors.New("Unable to find IP address. Ensure you're connected to a network")
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP, nil
+}
+
 func (man *Manager) Discover(timeout time.Duration) error {
-	conn, err := net.ListenUDP("udp4", nil)
+	lip, err := getLocalIP()
+	if err != nil {
+		return err
+	}
+	conn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: lip})
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	log.Printf("Local address: %s", localAddr)
 
 	deadline := time.Now().Add(timeout)
+	deadlineTimer := time.NewTimer(timeout)
 	broadcastAddr := &net.UDPAddr{IP: net.IPv4bcast, Port: 80}
-	hello := NewHello(*broadcastAddr)
-	req := hello.Bytes()
-	_, err = conn.WriteToUDP(req, broadcastAddr)
-	if err != nil {
-		return err
-	}
-	if man.debug {
-		log.Printf("Discover: %s -> %s (%d bytes)\n%s", conn.LocalAddr(), broadcastAddr, len(req), hex.Dump(req))
-	}
+
+	go func() {
+		ticker := time.NewTicker(time.Second)
+		for {
+			hello := NewHello(*localAddr)
+			req := hello.Bytes()
+			_, err = conn.WriteToUDP(req, broadcastAddr)
+			if err != nil {
+				log.Fatalln(err)
+				return
+			}
+			if man.debug {
+				log.Printf("Discover: %s -> %s (%d bytes)\n%s", localAddr, broadcastAddr, len(req), hex.Dump(req))
+			}
+
+			select {
+			case <-ticker.C:
+				continue
+			case <-deadlineTimer.C:
+				return
+			}
+		}
+	}()
 
 	resp := make([]byte, 2048)
+	seen := map[string]bool{}
 	for {
 		conn.SetDeadline(deadline)
 		n, src, err := conn.ReadFromUDP(resp)
@@ -62,10 +96,14 @@ func (man *Manager) Discover(timeout time.Duration) error {
 		}
 		data := resp[:n]
 		if man.debug {
-			log.Printf("Discover: %s <- %s (%d bytes)\n%s", conn.LocalAddr(), src, len(data), hex.Dump(data))
+			log.Printf("Discovered: %s <- %s (%d bytes)\n%s", localAddr, src, len(data), hex.Dump(data))
 		}
 		dev := Device{manager: man, src: src, state: NewState()}
 		dev.Read(data)
-		man.Discovered <- &dev
+		mac := dev.MacString()
+		if !seen[mac] {
+			man.Discovered <- &dev
+			seen[mac] = true
+		}
 	}
 }

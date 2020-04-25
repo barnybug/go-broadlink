@@ -33,7 +33,11 @@ func (dev *Device) Read(data []byte) {
 }
 
 func (dev *Device) String() string {
-	return fmt.Sprintf("Device{type: %02x mac: %s}", dev.device, hex.EncodeToString(dev.mac))
+	return fmt.Sprintf("Device{type: %02x mac: %s}", dev.device, dev.MacString())
+}
+
+func (dev *Device) MacString() string {
+	return hex.EncodeToString(dev.Mac())
 }
 
 func (dev *Device) send(req Request, resp Response) error {
