@@ -95,7 +95,7 @@ func ip2uint32(ip net.IP) uint32 {
 func NewHello(localAddr net.UDPAddr) *Hello {
 	ip := ip2uint32(localAddr.IP)
 	port := uint16(localAddr.Port)
-	now := time.Now()
+	now := time.Now().UTC()
 	_, offset := now.Local().Zone()
 	offset = offset / 3600
 	return &Hello{
