@@ -47,7 +47,9 @@ func (man *Manager) Discover(timeout time.Duration) error {
 	}
 	defer conn.Close()
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
-	log.Printf("Local address: %s", localAddr)
+	if man.debug {
+		log.Printf("Local address: %s", localAddr)
+	}
 
 	deadline := time.Now().Add(timeout)
 	deadlineTimer := time.NewTimer(timeout)
