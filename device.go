@@ -29,7 +29,8 @@ func (dev *Device) Mac() []byte {
 
 func (dev *Device) Read(data []byte) {
 	dev.device = binary.LittleEndian.Uint16(data[0x34:0x36])
-	dev.mac = data[0x3a:0x40]
+	dev.mac = make([]byte, 6)
+	copy(dev.mac, data[0x3a:0x40])
 }
 
 func (dev *Device) String() string {
